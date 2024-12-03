@@ -1,0 +1,169 @@
+import tkinter as tk
+from tkinter import ttk
+
+class BombDefusalGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Bomb Defusal Game")
+        self.root.geometry("800x600")
+        self.root.configure(bg='black')
+        
+        # Game state
+        self.countdown = 300  # 5 minutes
+        self.timer_running = True
+        
+        self.setup_gui()
+        self.start_timer()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)  # Handle window close
+
+    def setup_gui(self):
+        # Main container
+        self.main_frame = ttk.Frame(self.root)
+        self.main_frame.pack(expand=True, fill='both', padx=20, pady=20)
+        
+        # Timer display
+        self.timer_label = tk.Label(
+            self.main_frame,
+            text="05:00",
+            font=("Digital-7", 48),  # Ensure the font is installed or use fallback
+            fg="red",
+            bg="black"
+        )
+        self.timer_label.pack(pady=20)
+        
+        # Modules container
+        self.modules_frame = ttk.Frame(self.main_frame)
+        self.modules_frame.pack(expand=True, fill='both')
+        
+        # Create module sections
+        self.create_toggles_module()
+        self.create_button_module()
+        self.create_keypad_module()
+        self.create_wires_module()
+        
+        # Status display
+        self.status_label = tk.Label(
+            self.main_frame,
+            text="Status: Active",
+            font=("Courier", 14),
+            fg="green",
+            bg="black"
+        )
+        self.status_label.pack(pady=10)
+
+    def create_toggles_module(self):
+        frame = ttk.LabelFrame(self.modules_frame, text="Binary Puzzle")
+        frame.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
+        
+        self.toggle_vars = []
+        toggle_frame = ttk.Frame(frame)
+        toggle_frame.pack(pady=10)
+        
+        for i in range(4):
+            var = tk.BooleanVar()
+            self.toggle_vars.append(var)
+            ttk.Checkbutton(
+                toggle_frame,
+                variable=var,
+                command=self.check_toggles
+            ).pack(side=tk.LEFT, padx=5)
+
+    def create_button_module(self):
+        frame = ttk.LabelFrame(self.modules_frame, text="Button Challenge")
+        frame.grid(row=0, column=1, padx=10, pady=5, sticky="nsew")
+        
+        self.button = ttk.Button(
+            frame,
+            text="HOLD",
+            command=self.button_pressed
+        )
+        self.button.pack(pady=10)
+
+    def create_keypad_module(self):
+        frame = ttk.LabelFrame(self.modules_frame, text="Keypad")
+        frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+        
+        self.keypad_display = tk.Label(
+            frame,
+            text="____",
+            font=("Courier", 24)
+        )
+        self.keypad_display.pack(pady=5)
+        
+        keypad_frame = ttk.Frame(frame)
+        keypad_frame.pack()
+        
+        keys = [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9'],
+            ['*', '0', '#']
+        ]
+        
+        for i, row in enumerate(keys):
+            for j, key in enumerate(row):
+                ttk.Button(
+                    keypad_frame,
+                    text=key,
+                    command=lambda k=key: self.keypad_press(k)
+                ).grid(row=i, column=j, padx=2, pady=2)
+
+    def create_wires_module(self):
+        frame = ttk.LabelFrame(self.modules_frame, text="Wires")
+        frame.grid(row=1, column=1, padx=10, pady=5, sticky="nsew")
+        
+        self.wire_vars = []
+        for i in range(5):
+            var = tk.BooleanVar(value=True)
+            self.wire_vars.append(var)
+            ttk.Checkbutton(
+                frame,
+                text=f"Wire {i+1}",
+                variable=var,
+                command=self.check_wires
+            ).pack(pady=2)
+
+    def start_timer(self):
+        def timer_loop():
+            if self.timer_running and self.countdown > 0:
+                minutes = self.countdown // 60
+                seconds = self.countdown % 60
+                self.timer_label.config(text=f"{minutes:02d}:{seconds:02d}")
+                self.countdown -= 1
+                self.root.after(1000, timer_loop)
+            elif self.countdown <= 0:
+                self.game_over()
+
+        timer_loop()
+
+    def check_toggles(self):
+        # Add toggle checking logic
+        pass
+
+    def button_pressed(self):
+        # Add button press logic
+        pass
+
+    def keypad_press(self, key):
+        # Add keypad logic
+        pass
+
+    def check_wires(self):
+        # Add wire checking logic
+        pass
+
+    def game_over(self):
+        self.timer_running = False
+        self.status_label.config(text="Game Over!", fg="red")
+
+    def on_close(self):
+        self.timer_running = False
+        self.root.destroy()
+
+def main():
+    root = tk.Tk()
+    app = BombDefusalGUI(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
