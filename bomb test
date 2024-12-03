@@ -1,0 +1,156 @@
+from tkinter import *
+import random
+from threading import Thread
+from time import sleep
+from random import randint
+import board
+from adafruit_ht16k33.segments import Seg7x4
+from digitalio import DigitalInOut, Direction, Pull
+from adafruit_matrixkeypad import Matrix_Keypad
+
+# Constants
+COUNTDOWN = 300
+MAX_PASS_LEN = 11
+STAR_CLEARS_PASS = True
+
+# LCD Display GUI
+class Lcd(Frame):
+    def __init__(self, window):
+        super().__init__(window, bg="black")
+        window.after(500, window.attributes, '-fullscreen', 'True')
+        self.setup()
+
+    def setup(self):
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=2)
+        self.pack(fill=BOTH, expand=True)
+
+        # General labels for modules
+        labels = [
+            ("Time left: ", "_ltimer"),
+            ("Combination: ", "_lkeypad"),
+            ("Wires: ", "_lwires"),
+            ("Button: ", "_lbutton"),
+            ("Toggles: ", "_ltoggles"),
+            ("Status Normal", "_lstatus", "green"),
+        ]
+
+        self.elements = {}
+        for i, (text, var_name, *color) in enumerate(labels):
+            fg = color[0] if color else "white"
+            lbl = Label(self, bg="black", fg=fg, font=("Courier New", 24), text=text)
+            lbl.grid(row=i, column=0, columnspan=2, sticky=W)
+            self.elements[var_name] = lbl
+
+        # Additional labels
+        self._equation_label = Label(self, bg="black", fg="white", font=("Courier New", 24), text="")
+        self._equation_label.grid(row=5, column=0, columnspan=2, sticky=W)
+        
+        self._lquestion = Label(self, bg="black", fg="white", font=("Courier New", 12), text="")
+        self._lquestion.grid(row=7, column=0, columnspan=2, sticky=W)
+
+        self._lwires_choices = Label(self, bg="black", fg="white", font=("Courier New", 18), text="")
+        self._lwires_choices.grid(row=8, column=0, columnspan=2, sticky=W)
+
+    def update_label(self, var_name, text, fg="white"):
+        """Update a specific label's text and color."""
+        if var_name in self.elements:
+            self.elements[var_name].config(text=text, fg=fg)
+
+# Base Phase Thread
+class PhaseThread(Thread):
+    def __init__(self, name):
+        super().__init__(name=name, daemon=True)
+        self._running = False
+
+    def stop(self):
+        self._running = False
+
+# Timer Phase
+class Timer(PhaseThread):
+    def __init__(self, value, display, gui, name="Timer"):
+        super().__init__(name)
+        self._value = value
+        self._display = display
+        self._gui = gui
+        self._paused = False
+
+    def run(self):
+        self._running = True
+        while self._running:
+            if not self._paused:
+                self._display.print(str(self))
+                self._gui.update_label("_ltimer", f"Time left: {self}")
+                sleep(1)
+                if self._value <= 0:
+                    self._running = False
+                    self._gui.update_label("_lstatus", "BOMB EXPLODED!", "red")
+                    break
+                self._value -= 1
+            else:
+                sleep(0.1)
+
+    def pause(self):
+        self._paused = not self._paused
+
+    def __str__(self):
+        return f"{self._value // 60:02}:{self._value % 60:02}"
+
+# Toggles Phase
+class Toggles(PhaseThread):
+    def __init__(self, pins, gui, name="Toggles"):
+        super().__init__(name)
+        self._pins = pins
+        self._gui = gui
+        self._solution, self._math_problem = self.generate_solution()
+        self._gui.update_label("_ltoggles", f"Toggles: Solve the equation: {self._math_problem}")
+
+    def generate_solution(self):
+        problems = [("2 ** 3 + 3", 11), ("4 * 3 - 2", 10), ("5 + 2 ** 2", 9)]
+        math_problem, answer = random.choice(problems)
+        return format(answer, '04b'), math_problem
+
+    def run(self):
+        self._running = True
+        while self._running:
+            value = "".join([str(int(pin.value)) for pin in self._pins])
+            self._gui.update_label("_ltoggles", f"Toggles: {value} | Solve: {self._math_problem}")
+            if value == self._solution:
+                self._gui.update_label("_ltoggles", "Toggles: SOLVED!", "green")
+                break
+            sleep(0.1)
+
+# Other classes follow similar patterns: Keypad, Button, Wires
+# ...
+
+# Main Game Logic
+def check():
+    if timer._running:
+        gui.update_label("_ltimer", f"Time left: {timer}")
+    else:
+        gui.update_label("_lstatus", "BOMB EXPLODED!", "red")
+        quit()
+    gui.after(100, check)
+
+# Initialize Components
+window = Tk()
+gui = Lcd(window)
+i2c = board.I2C()
+display = Seg7x4(i2c)
+display.brightness = 0.5
+timer = Timer(COUNTDOWN, display, gui)
+
+# Example setup for toggles
+toggle_pins = [DigitalInOut(pin) for pin in (board.D12, board.D16, board.D20, board.D21)]
+for pin in toggle_pins:
+    pin.direction = Direction.INPUT
+    pin.pull = Pull.DOWN
+toggles = Toggles(toggle_pins, gui)
+
+# Start components
+timer.start()
+toggles.start()
+
+# Game loop
+check()
+window.mainloop()
